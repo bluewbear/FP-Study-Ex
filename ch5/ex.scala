@@ -39,10 +39,10 @@ sealed trait Stream[+A] {
 
   def take(n: Int): Stream[A] = {
     this match {
-      case Empty => Empty
       case Cons(h, t) =>
         if (n == 1) Cons(() => h(), () => Empty)
         else Cons(() => h(), () => t().take(n - 1))
+      case _ => Empty
     }
   }
 
@@ -55,7 +55,7 @@ sealed trait Stream[+A] {
     }
   }
 
-  def takeWhile(p: A => Boolean): Stream[A] = {
+  def takeWhile_old(p: A => Boolean): Stream[A] = {
     this match {
       case Empty => Empty
       case Cons(h, t) =>
@@ -63,6 +63,20 @@ sealed trait Stream[+A] {
         else t().takeWhile(p)
     }
   }
+  
+  def takeWhile(p: A => Boolean): Stream[A] = 
+  	foldRight(this)((a, b) => if (p(a)) Cons(() => a, () => b.takeWhile(p)) else b.takeWhile(p))
+  
+  def exists(p: A => Boolean): Boolean =
+    foldRight(false)((a, b) => p(a) || b)
+  
+  def foldRight[B](z: => B)(f: (A, => B) => B): B = this match {
+    case Cons(h, t) => f(h(), t().foldRight(z)(f))
+    case _ => z
+  }
+  
+  def forAll(p: A => Boolean): Boolean =
+  	foldRight(true)((a, b) => p(a) && b)
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
@@ -83,3 +97,5 @@ val e = Stream(1, 2, 3, 4).drop(2).toList
 println(e)
 val f = Stream(1, 2, 3, 4, 5, 6).takeWhile((x: Int) => x%2 == 0).toList
 println(f)
+val g = Stream(1, 2, 3, 9).forAll((x: Int) => x < 5)
+println(g)
